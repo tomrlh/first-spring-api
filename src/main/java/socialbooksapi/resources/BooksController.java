@@ -1,9 +1,11 @@
 package socialbooksapi.resources;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import socialbooksapi.domain.Book;
 import socialbooksapi.repository.BooksRepository;
@@ -19,51 +22,57 @@ import socialbooksapi.repository.BooksRepository;
 @RequestMapping("/books")
 public class BooksController {
 	@Autowired
-	private BooksRepository livrosRepository;
+	private BooksRepository booksRepository;
 
 	@RequestMapping(method=RequestMethod.GET)
-	public List<Book> getAll() {
-		return livrosRepository.findAll();
+	public ResponseEntity<List<Book>> getAll() {
+		return ResponseEntity.status(HttpStatus.OK).body(booksRepository.findAll());
 	}
 	
 	
 	
-	@RequestMapping(method=RequestMethod.POST)
-	public void save(@RequestBody Book book) {
-		livrosRepository.save(book);
+	@RequestMapping(method = RequestMethod.POST)
+	public ResponseEntity<Void> save(@RequestBody Book book) {
+		book = booksRepository.save(book);
+		
+		// creates the URI that refers to the resource created
+		URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
+				.path("/{id}").buildAndExpand(book.getId()).toUri();
+		
+		return ResponseEntity.created(uri).build();
 	}
 	
 	
 	
 	@RequestMapping(value="/{id}", method=RequestMethod.GET)
-	public Optional<Book> find(@PathVariable("id") Long id) {
-		return livrosRepository.findById(id);
-	}
-	
-	
-
-	//Other way to perform a find
-//	@RequestMapping(value="/{id}", method=RequestMethod.GET)
-//	public ResponseEntity<Book> find(@PathVariable("id") Long id) {
-//		Book book = livrosRepository.findById(id);
-//		
-//		if(book == null) return ResponseEntity.notFound().build();
-//		
-//		return ResponseEntity.status(HttpStatus.OK).body(book);
-//	}	
+	public ResponseEntity<?> find(@PathVariable("id") Long id) {
+		Optional<Book> book = booksRepository.findById(id);
+		
+		if(book == null) return ResponseEntity.notFound().build();
+		
+		return ResponseEntity.status(HttpStatus.OK).body(book);
+	}	
 	
 	
 	
 	@RequestMapping(value="/{id}", method=RequestMethod.DELETE)
-	public void delete(@PathVariable("id") Long id)  {
-		livrosRepository.deleteById(id);
+	public ResponseEntity<Void> delete(@PathVariable("id") Long id)  {
+		try {
+			booksRepository.deleteById(id);			
+		}
+		catch (EmptyResultDataAccessException e) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.noContent().build();
 	}
 	
 	
 	
 	@RequestMapping(value="/{id}", method=RequestMethod.PUT)
-	public void update(@RequestBody Book book, @PathVariable("id") Long id)  {
+	public ResponseEntity<Void> update(@RequestBody Book book, @PathVariable("id") Long id)  {
 		book.setId(id);
-		livrosRepository.save(book);
+		booksRepository.save(book);
+		
+		return ResponseEntity.noContent().build();
 	}
 }
