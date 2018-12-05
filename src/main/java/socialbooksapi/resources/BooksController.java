@@ -2,10 +2,10 @@ package socialbooksapi.resources;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import socialbooksapi.domain.Book;
+import socialbooksapi.domain.Comment;
 import socialbooksapi.services.BooksService;
-import socialbooksapi.services.exceptions.BookNotFoundException;
 
 @RestController
 @RequestMapping("/books")
@@ -26,14 +26,16 @@ public class BooksController {
 	private BooksService booksService;
 
 	@RequestMapping(method=RequestMethod.GET)
-	public ResponseEntity<List<Book>> getAll() {
+	public ResponseEntity<List<Book>> findAll() {
 		return ResponseEntity.status(HttpStatus.OK).body(booksService.findAll());
 	}
 	
 	
 	
+	
+	
 	@RequestMapping(method = RequestMethod.POST)
-	public ResponseEntity<Void> save(@RequestBody Book book) {
+	public ResponseEntity<Void> save(@Valid @RequestBody Book book) {
 		book = booksService.save(book);
 		
 		// creates the URI that refers to the resource created
@@ -45,42 +47,54 @@ public class BooksController {
 	
 	
 	
+	
 	@RequestMapping(value="/{id}", method=RequestMethod.GET)
 	public ResponseEntity<?> find(@PathVariable("id") Long id) {
 		Book book = null;
-		try {
-			book = booksService.findById(id);
-		}
-		catch (Exception e) {
-			return ResponseEntity.notFound().build();
-		}
+		book = booksService.findById(id);
 		return ResponseEntity.status(HttpStatus.OK).body(book);
 	}	
 	
 	
 	
+	
 	@RequestMapping(value="/{id}", method=RequestMethod.DELETE)
 	public ResponseEntity<Void> delete(@PathVariable("id") Long id)  {
-		try {
-			booksService.deleteById(id);			
-		}
-		catch (BookNotFoundException e) {
-			return ResponseEntity.notFound().build();
-		}
+		booksService.deleteById(id);
 		return ResponseEntity.noContent().build();
 	}
+	
 	
 	
 	
 	@RequestMapping(value="/{id}", method=RequestMethod.PUT)
 	public ResponseEntity<Void> update(@RequestBody Book book, @PathVariable("id") Long id)  {
 		book.setId(id);
-		try {			
-			booksService.update(book);
-		}
-		catch (BookNotFoundException e) {
-			return ResponseEntity.noContent().build();
-		}
+		booksService.update(book);
 		return ResponseEntity.noContent().build();
+	}
+	
+	
+	
+	
+	@RequestMapping(value="/{id}/comments", method=RequestMethod.GET)
+	public ResponseEntity<List<Comment>> findComments(@PathVariable("id") Long bookId) {
+		List<Comment> comments = booksService.findComments(bookId);
+		
+		return ResponseEntity.status(HttpStatus.OK).body(comments);
+	}
+	
+
+	
+		
+	@RequestMapping(value="/{id}/comments", method=RequestMethod.POST)
+	public ResponseEntity<Void> addComment(@PathVariable("id") Long bookId,
+			@RequestBody Comment comment) {
+		booksService.saveComment(bookId, comment);
+		
+		URI uri = ServletUriComponentsBuilder.fromCurrentRequest()
+				.build().toUri();
+		
+		return ResponseEntity.created(uri).build();
 	}
 }
